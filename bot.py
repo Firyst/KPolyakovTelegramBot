@@ -3,6 +3,12 @@ import aiogram.utils.exceptions
 from aiogram import Bot, Dispatcher, executor, types
 from sql_operator import TasksDB, MyTask, MyUser
 import json
+import sys
+
+
+def exception_hook(exc_type, exc_value, tb):
+    # custom exception hook for some weird errors.
+    logging.critical(f"{exc_type.__name__}: {exc_value} ({tb.tb_lineno})")
 
 
 def load_cats():
@@ -22,7 +28,9 @@ with open('replies/manual.txt') as f:
     reply_manual = f.read()
 
 # configure logging
-logging.basicConfig(level=logging.INFO)
+sys.excepthook = exception_hook
+logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO,
+                    filename="bot_log.txt")
 
 # initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)
@@ -30,7 +38,6 @@ bot.set_chat_menu_button()
 dp = Dispatcher(bot)
 db = TasksDB("db.sqlite3")
 cats = load_cats()
-
 # create keyboards
 
 # menu keyboard
@@ -61,6 +68,9 @@ for i in range(5):
     j = i * 5
     task_kb.row(types.KeyboardButton(p(j + 1)), types.KeyboardButton(p(j + 2)), types.KeyboardButton(p(j + 3)),
                 types.KeyboardButton(p(j + 4)), types.KeyboardButton(p(j + 5)))
+
+
+logging.info("Pre-init success.")
 
 
 def format_task(task: MyTask):
@@ -116,6 +126,7 @@ async def send_welcome(message: types.Message):
                          "/help - справка по работе с ботом\n"
                          "/manual - инструкция по работе с заданиями", reply_markup=menu_kb)
     db.update_user(MyUser(message.from_user.id, message.chat.id))
+    logging.info(f"New user: {message.from_user.id} {message.from_user.username}")
 
 
 @dp.message_handler(commands=['menu'])
